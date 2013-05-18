@@ -1,7 +1,6 @@
 import oauth2 as oauth
 import urllib2 as urllib
 
-# See Assignment 1 instructions or README for how to get these credentials
 access_token_key = "47926845-rbzJFO8RsewfG8rEBKFAQajwLw3yFTYDxlHOopADI"
 access_token_secret = "PK6oe6okCXQ7oz2cKITvonVIWWGCNWw9DyQfc4Yj91I"
 
@@ -21,10 +20,6 @@ http_method = "GET"
 http_handler  = urllib.HTTPHandler(debuglevel=_debug)
 https_handler = urllib.HTTPSHandler(debuglevel=_debug)
 
-'''
-Construct, sign, and open a twitter request
-using the hard-coded credentials above.
-'''
 def twitterreq(url, method, parameters):
   req = oauth.Request.from_consumer_and_token(oauth_consumer,
                                              token=oauth_token,
