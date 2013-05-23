@@ -1,11 +1,11 @@
 import MapReduce
-import Helper
 import sys
 
 
 mr = MapReduce.MapReduce()
-hlp = Helper.Helper()
 
+def unique(lst):
+    return list(set(lst))
 
 def mapper(record):
     docid = record[0]
@@ -15,7 +15,7 @@ def mapper(record):
       mr.emit_intermediate(w, docid)
 
 def reducer(key, ids):
-		mr.emit((key, hlp.unique(ids)))
+		mr.emit((key, unique(ids)))
 	
 
 if __name__ == '__main__':
