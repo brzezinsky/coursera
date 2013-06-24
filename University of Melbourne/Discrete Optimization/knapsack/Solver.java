@@ -1,109 +1,131 @@
-import java.io.*;
-import java.util.*;
-import java.util.List;
-import java.util.ArrayList;
-
 /**
- * The class <code>Solver</code> is an implementation of a greedy algorithm to solve the knapsack problem.
- *
+ * Created with IntelliJ IDEA.
+ * User: brzezinsky
+ * Date: 6/24/13
+ * Time: 11:24 PM
+ * To change this template use File | Settings | File Templates.
  */
-public class Solver {
-    
-    /**
-     * The main class
-     */
-    public static void main(String[] args) {
+
+import java.io.*;
+import java.util.BitSet;
+import java.util.StringTokenizer;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+public class Solver extends Thread {
+    public Solver(String inputFileName, String outputFileName) {
         try {
-            solve(args);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-		static class Item implements Comparable<Item>{
-			final int cost;
-			final int weight;
-			final int ID;
-			public Item(int cost, int weight, int ID) {
-				this.cost = cost;
-				this.weight = weight;
-				this.ID = ID;
-			}
-
-			public int compareTo(Item o) {
-				double here = (double)cost / weight;
-				double there = (double)o.cost / o.weight;
-				if (here > there) return -1;
-				if (here < there) return 1;
-				return 0;
-			}
-		}    
-    /**
-     * Read the instance, solve it, and print the solution in the standard output
-     */
-    public static void solve(String[] args) throws IOException {
-        String fileName = null;
-        
-        // get the temp file name
-        for(String arg : args){
-            if(arg.startsWith("-file=")){
-                fileName = arg.substring(6);
-            } 
-        }
-        if(fileName == null)
-            return;
-        
-        // read the lines out of the file
-        List<String> lines = new ArrayList<String>();
-
-        BufferedReader input =  new BufferedReader(new FileReader(fileName));
-        try {
-            String line = null;
-            while (( line = input.readLine()) != null){
-                lines.add(line);
-            }
-        }
-        finally {
-            input.close();
-        }
-        
-        
-        // parse the data in the file
-        String[] firstLine = lines.get(0).split("\\s+");
-        int items = Integer.parseInt(firstLine[0]);
-        int capacity = Integer.parseInt(firstLine[1]);
-				Item []it = new Item[items];
-
-        for(int i=1; i < items+1; i++){
-          String line = lines.get(i);
-          String[] parts = line.split("\\s+");
-
-          int a = Integer.parseInt(parts[0]);
-         	int b = Integer.parseInt(parts[1]);
-					it[i - 1] = new Item(a, b, i - 1);
-        }
-				Arrays.sort(it);
-        // a trivial greedy algorithm for filling the knapsack
-        // it takes items in-order until the knapsack is full
-        int value = 0;
-        int weight = 0;
-        int[] taken = new int[items];
-
-        for(int i=0; i < items; i++){
-            if(weight + it[i].weight <= capacity){
-                taken[it[i].ID] = 1;
-                value += it[i].cost;
-                weight += it[i].weight;
+            if (inputFileName != null) {
+                this.input = new BufferedReader(new FileReader(inputFileName));
             } else {
-                taken[it[i].ID] = 0;
+                this.input = new BufferedReader(new InputStreamReader(System.in));
+            }
+            if (outputFileName != null) {
+                this.output = new PrintWriter(outputFileName);
+            } else {
+                this.output = new PrintWriter(System.out);
+            }
+            this.setPriority(Thread.MAX_PRIORITY);
+        } catch (Throwable e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(666);
+        }
+    }
+
+    private void solve() throws Throwable {
+        int n = nextInt();
+        int K = nextInt();
+        int []cost = new int[n];
+        int []weight = new int[n];
+        for (int i = 0; i < n; ++i) {
+            cost[i] = nextInt();
+            weight[i] = nextInt();
+        }
+
+
+        final int SOLVER_COUNT = 3;
+
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        AbstractSolver []solvers = new AbstractSolver[SOLVER_COUNT];
+
+
+        solvers[0] = new Knapsnack(cost, weight, K);
+        solvers[1] = new GreedySolver(cost, weight, K);
+        solvers[2] = new DPSolver(cost, weight, K);
+
+        Future []res = new Future[SOLVER_COUNT];
+        for (int i = 0; i < SOLVER_COUNT; ++i) {
+            res[i] = executor.submit(new Thread(null, solvers[i], "", 1024 * 1024 * 1024));
+        }
+        for (int i = 0; i < SOLVER_COUNT; ++i) {
+            try {
+								System.gc();
+                res[i].get();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
             }
         }
-        
-        // prepare the solution in the specified output format
-        System.out.println(value+" 0");
-        for(int i=0; i < items; i++){
-            System.out.print(taken[i]+" ");
+        int at = 0;
+        for (int i = 0; i < SOLVER_COUNT; ++i) {
+            if (solvers[i].getResult() > solvers[at].getResult()) at = i;
         }
-        System.out.println("");        
+        solvers[at].printResult(output);
+        executor.shutdown();
+
     }
+
+    public void run() {
+        try {
+            solve();
+        } catch (Throwable e) {
+            System.err.println(e.getMessage());
+            System.err.println(e.toString());
+            e.printStackTrace();
+            System.exit(666);
+        } finally {
+            output.close();
+        }
+    }
+
+    public static void main(String... args) {
+        String fileName = null;
+
+        // get the temp file name
+        for (String arg : args) {
+            if (arg.startsWith("-file=")) {
+                fileName = arg.substring(6);
+            }
+        }
+        if (fileName == null)
+            new Solver(null, null).start();
+        else new Solver(fileName, null).start();
+    }
+
+    private int nextInt() throws IOException {
+        return Integer.parseInt(next());
+    }
+
+    private double nextDouble() throws IOException {
+        return Double.parseDouble(next());
+    }
+
+    private long nextLong() throws IOException {
+        return Long.parseLong(next());
+    }
+
+    private String next() throws IOException {
+        while (tokens == null || !tokens.hasMoreTokens()) {
+            tokens = new StringTokenizer(input.readLine());
+        }
+        return tokens.nextToken();
+    }
+
+    private StringTokenizer tokens;
+    private BufferedReader input;
+    private PrintWriter output;
 }
