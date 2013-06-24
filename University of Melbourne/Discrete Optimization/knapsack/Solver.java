@@ -62,7 +62,7 @@ public class Solver extends Thread {
         }
         for (int i = 0; i < SOLVER_COUNT; ++i) {
             try {
-								System.gc();
+		System.gc();
                 res[i].get();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
